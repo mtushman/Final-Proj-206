@@ -3,52 +3,7 @@ import sqlite3
 import json
 import os
 import requests
-
-
-def load_json(filename):
-    '''
-    Loads a JSON cache from filename if it exists and returns dictionary
-    with JSON data or an empty dictionary if the cache does not exist
-
-    Parameters
-    ----------
-    filename: string
-        the name of the cache file to read in
-
-    Returns
-    -------
-    dict
-        if the cache exists, a dict with loaded data
-        if the cache does not exist, an empty dict
-    '''
-    try:
-        with open(filename, 'r') as data:
-            return json.load(data)
-    except:
-        return {}
-    
-
-
-def write_json(filename, dict):
-    '''
-    Encodes dict into JSON format and writes
-    the JSON to filename to save the search results
-
-    Parameters
-    ----------
-    filename: string
-        the name of the file to write a cache to
-    
-    dict: cache dictionary
-
-    Returns
-    -------
-    None
-        does not return anything
-    '''
-    info = json.dumps(dict)  
-    with open(filename, "w") as file:
-        file.write(info)
+import time
 
 
 def get_basketball_info(url, params=None):
@@ -85,12 +40,52 @@ def get_basketball_info(url, params=None):
         except:
             print("Exception!")
             return None
+
+def setUpDatabase(db_name):
+    path = os.path.dirname(os.path.abspath(__file__))
+    conn = sqlite3.connect(path + "/" + db_name)
+    cur = conn.cursor()
+    return cur, conn
+
+
+def create_table_players(cur, conn):
+    cur.execute('CREATE TABLE IF NOT EXISTS b_players (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, position TEXT, height_feet INTEGER, height_inches INTEGER, weight_pounds INTEGER)')
+    conn.commit()
+
+
+
+def add_player(cur, conn):
+    index=1
+    while index<= 209:
+        url = f'https://www.balldontlie.io/api/v1/players?page={index}'
+        data = get_basketball_info(url)
+        # print(data)
+        # print(data['data'])
+        for player in data['data']:
+            id = player['id']
+            first_name = player['first_name']
+            last_name = player['last_name']
+            position = player['position']
+            height_feet = player.get('height_feet', None)
+            height_inches = player.get('height_inches', None)
+            weight_pounds = player.get('weight_pounds', None)
+            # cur.execute('INSERT OR IGNORE INTO b_players (id, first_name, last_name, position, height_feet, height_inches, weight_pounds) VALUES(?, ?, ?, ?, ?, ?, ?)', (id, first_name, last_name, position, height_feet, height_inches, weight_pounds))
+            cur.execute("INSERT OR IGNORE INTO b_players (id, first_name, last_name, position, height_feet,height_inches, weight_pounds) VALUES (?,?,?,?,?,?,?)", (id, first_name, last_name, position, height_feet, height_inches, weight_pounds))
+        index+=1
+        conn.commit()
+        if index == 60 or index == 120 or index == 180:
+            time.sleep(65)
+        
         
 
 
-path = os.path.dirname(os.path.abspath(__file__))
-conn = sqlite3.connect(path + "/" + 'basketball_players')
-cur = conn.cursor()
-cur.execute('CREATE TABLE IF NOT EXISTS b_players (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, position TEXT, height_feet INTEGER, height_inches INTEGER, weight_pounds INTEGER')
+# def create_table_stats():
 
 
+def main():
+    cur, conn = setUpDatabase('basketball_players.db')
+    create_table_players(cur, conn)
+    add_player(cur,conn)
+
+if __name__ == "__main__":
+    main()
