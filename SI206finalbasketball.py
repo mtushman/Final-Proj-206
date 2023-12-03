@@ -105,10 +105,10 @@ def add_stats(cur, conn):
 
 
 def main():
-    cur, conn = setUpDatabase('basketball_players.db')
+    cur, conn = setUpDatabase('sport_analysis.db')
     create_table_players(cur, conn)
-    # add_player(cur,conn)
-    # add_stats(cur,conn)
+    add_player(cur,conn)
+    add_stats(cur,conn)
 
 if __name__ == "__main__":
     main()
