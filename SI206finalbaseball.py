@@ -93,29 +93,39 @@ def add_player(cur, conn):
             cur.execute('INSERT OR IGNORE INTO baseball_players (player_id, player_name, team_id, team_name) VALUES(?, ?, ?, ?)', (player_id, player_name, team_id, team_name))
             count+=1
             conn.commit()
-            if count%25 == 0:
-                time.sleep(5)
+            #if count%25 == 0:
+                #time.sleep(5)
     return player_id_lst
 
-
 def add_stats(cur, conn):
-    player_ids= add_player(cur, conn)
+    player_ids = add_player(cur, conn)
     count = 1
+
     for id in player_ids:
-        url= f"http://lookup-service-prod.mlb.com/json/named.sport_hitting_tm.bam?league_list_id='mlb'&game_type='R'&season='2022'&player_id='{id}'"
+        url = f"http://lookup-service-prod.mlb.com/json/named.sport_hitting_tm.bam?league_list_id='mlb'&game_type='R'&season='2022'&player_id='{id}'"
         data = get_baseball_info(url)
+
         if 'row' not in data['sport_hitting_tm']['queryResults']:
             continue
-        for player in data['sport_hitting_tm']['queryResults']['row']:
-            player_id = int(player['player_id'])
-            player_avg= player['avg']     
-            player_ops = player['ops']   
-            player_obp = player['obp']    
-            cur.execute("INSERT OR IGNORE INTO b_stats (player_id, player_avg) VALUES (?,?,?,?)", (player_id, player_avg, player_ops, player_obp))
-            count+=1
+
+        # Directly access the 'row' dictionary
+        player_stats = data['sport_hitting_tm']['queryResults']['row']
+        # print(type(player_stats))
+        # print(player_stats['avg'])
+        # Checking if the dictionary is not empty
+        if type(player_stats)==dict:
+            player_id = id
+            player_avg = player_stats.get('avg', None)
+            player_ops = player_stats.get('ops', None)
+            player_obp = player_stats.get('obp', None)
+
+            cur.execute("INSERT OR IGNORE INTO player_stats (player_id, player_avg, player_ops, player_obp) VALUES (?,?,?,?)", (player_id, player_avg, player_ops, player_obp))
             conn.commit()
-            if count%25 == 0:
-                time.sleep(5)
+
+        # count += 1
+        # Add a delay if you are making requests in a loop to avoid overloading the server
+        # if count % 25 == 0:
+        #     time.sleep(5)
         
 
 
