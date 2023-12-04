@@ -4,6 +4,7 @@ import json
 import os
 import requests
 import time
+import matplotlib.pyplot as plt
 
 
 def get_baseball_info(url, params=None):
@@ -132,11 +133,13 @@ def add_stats(cur, conn):
 def calculate_stats_baseball(filename, cur, conn):
     cur.execute("SELECT baseball_players.player_name, player_stats.player_avg, player_stats.player_ops, player_stats.player_obp FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id")
     res = cur.fetchall()
+    all_players_lst = []
     avr_lst=[]
     obp_lst=[]
     ops_lst=[]
     # print(res)
     for player in res:
+        name = player[0]
         avr= player[1]
         ops= player[2]
         obp= player[3]
@@ -146,6 +149,7 @@ def calculate_stats_baseball(filename, cur, conn):
             avr_lst.append(avr)
             obp_lst.append(obp)
             ops_lst.append(ops)
+            all_players_lst.append(name)
     league_avr_average= sum(avr_lst)/len(avr_lst)
     league_obp_average= sum(obp_lst)/len(obp_lst)
     league_ops_average= sum(ops_lst)/len(ops_lst)
@@ -173,17 +177,72 @@ def calculate_stats_baseball(filename, cur, conn):
     print(res)
     elite.append(res)
 
+    count_above_average= len(above_avr[0])+len(above_obp[0])+len(above_ops[0])
+    count_elite_player= len(elite[0])
+
+    average_percentage= (len(above_avr[0])/(len(all_players_lst)))*100
+    obp_percentage= (len(above_obp[0])/(len(all_players_lst)))*100
+    ops_percentage= (len(above_ops[0])/(len(all_players_lst)))*100
+    elite_percentage= (len(elite[0])/(len(all_players_lst)))*100
+
+
     with open(filename, 'w') as file:
+        # json.dump(all_players_lst, file)
+        file.write("Total amount of players in Database " + str(len(all_players_lst)))
+        file.write('\n\n\n')
         json.dump(above_avr, file)
+        file.write("\nTotal amount of players above the league mean for Hitting Avergage: " + str(len(above_avr[0])))
+        file.write("\nPercentage of players above the league mean for Hitting Avergage: " + str(average_percentage)+'%')
         file.write('\n\n\n')
         json.dump(above_obp, file)
+        file.write("\nTotal amount of players above the league mean for OBP: " + str(len(above_obp[0])))
+        file.write("\nPercentage of players above the league mean for OBP: " + str(obp_percentage)+'%')
         file.write('\n\n\n')
         json.dump(above_ops, file)
+        file.write("\nTotal amount of players above the league mean for OPS: " + str(len(above_ops[0])))
+        file.write("\nPercentage of players above the league mean for OPS: " + str(ops_percentage)+'%')
         file.write('\n\n\n')
         json.dump(elite, file)
-    
-    
+        file.write("\nTotal amount of Elite players- above the league mean for for every category (avg, obp, ops): " + str(len(elite[0])))
+        file.write("\nPercentage of Elite players: " + str(elite_percentage)+'%')
 
+    categories = ['elite', 'league average']
+    values = [count_elite_player, count_above_average]
+    colors = ['blue', 'green']
+
+    plt.bar(categories, values, color=colors)
+    plt.xlabel('Category of player')
+    plt.ylabel('Amount of players')
+    plt.title('Elite vs Above Average Player Counts - Baseball')
+    plt.show()
+    
+    labels = ['Total Player', 'avg']
+    sizes = [len(all_players_lst)-len(above_avr[0]), len(above_avr[0])]
+    colors = ['lightcoral', 'lightgreen']
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
+    plt.title("Percentage of Players Above The League Mean For Hitting Average vs Below")
+    plt.show()
+
+    labels = ['Total Player', 'ops']
+    sizes = [len(all_players_lst)-len(above_ops[0]), len(above_ops[0])]
+    colors = ['lightcoral', 'orange']
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
+    plt.title("Percentage of Players above the league mean for ops vs below")
+    plt.show()
+
+    labels = ['Total Player', 'obp']
+    sizes = [len(all_players_lst)-len(above_obp[0]), len(above_obp[0])]
+    colors = ['lightcoral', 'purple']
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
+    plt.title("Percentage of Players Above The League Mean For OBP vs Below")
+    plt.show()
+
+    labels = ['Total Player', 'Elite Players']
+    sizes = [len(all_players_lst)-len(elite[0]), len(elite[0])]
+    colors = ['lightcoral', 'yellow']
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
+    plt.title("Percentage of Elite Players vs Non-Elite Players")
+    plt.show()
 
 def main():
     cur, conn = setUpDatabase('sport_analysis.db')
