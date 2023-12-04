@@ -99,16 +99,67 @@ def add_stats(cur, conn):
         if index%60==0:
             time.sleep(65)
         
+def calculate_stats_baseball(filename, cur, conn):
+    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts, b_stats.ast, b_stats.reb FROM b_players JOIN b_stats ON b_players. id = b_stats.player_id")
+    res = cur.fetchall()
+    print(res)
+    pts_lst=[]
+    ast_lst=[]
+    reb_lst=[]
+    # print(res)
+    for player in res:
+        pts= player[2]
+        ast= player[3]
+        reb= player[4]
+        pts_lst.append(pts)
+        ast_lst.append(ast)
+        reb_lst.append(reb)
+    league_pts_average= sum(pts_lst)/len(pts_lst)
+    league_ast_average= sum(ast_lst)/len(ast_lst)
+    league_reb_average= sum(reb_lst)/len(reb_lst)
+    print(league_pts_average)
+    print(league_ast_average)
+    print(league_reb_average)
+    above_pts=[]
+    above_ast=[]
+    above_reb=[]
+    elite=[]
+    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE pts > 11.13")
+    res = cur.fetchall()
+    print(res)
+    above_pts.append(res)
+    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.ast FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE ast > 2.57")
+    res = cur.fetchall()
+    print(res)
+    above_ast.append(res)
+    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.reb FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE reb > 4.20")
+    res = cur.fetchall()
+    print(res)
+    above_reb.append(res)
+    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts, b_stats.ast, b_stats.reb FROM b_players JOIN b_stats ON  b_players.id = b_stats.player_id WHERE pts > 11.13 AND ast > 2.75 AND reb > 4.20")
+    res = cur.fetchall()
+    print(res)
+    elite.append(res)
+    with open(filename, 'w') as file:
+        json.dump(above_pts, file)
+        file.write('\n\n\n')
+        json.dump(above_ast, file)
+        file.write('\n\n\n')
+        json.dump(above_reb, file)
+        file.write('\n\n\n')
+        json.dump(elite, file)
+       
 
 
-# def create_table_stats():
+
 
 
 def main():
-    cur, conn = setUpDatabase('sport_analysis.db')
-    create_table_players(cur, conn)
-    add_player(cur,conn)
-    add_stats(cur,conn)
+    cur, conn = setUpDatabase('sport_analysis.db')  
+    # create_table_players(cur, conn)
+    # add_player(cur,conn)
+    # add_stats(cur,conn)
+    calculate_stats_baseball("basketball_data.json", cur, conn)
 
 if __name__ == "__main__":
     main()
