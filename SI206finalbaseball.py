@@ -129,14 +129,68 @@ def add_stats(cur, conn):
         
 
 
-# def create_table_stats():
+def calculate_stats_baseball(filename, cur, conn):
+    cur.execute("SELECT baseball_players.player_name, player_stats.player_avg, player_stats.player_ops, player_stats.player_obp FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id")
+    res = cur.fetchall()
+    avr_lst=[]
+    obp_lst=[]
+    ops_lst=[]
+    # print(res)
+    for player in res:
+        avr= player[1]
+        ops= player[2]
+        obp= player[3]
+        if avr == '.---' or obp == '.---' or ops == '.---':
+            continue
+        else:
+            avr_lst.append(avr)
+            obp_lst.append(obp)
+            ops_lst.append(ops)
+    league_avr_average= sum(avr_lst)/len(avr_lst)
+    league_obp_average= sum(obp_lst)/len(obp_lst)
+    league_ops_average= sum(ops_lst)/len(ops_lst)
+    #print(league_avr_average)
+    #print(league_obp_average)
+    #print(league_ops_average)
+    above_avr=[]
+    above_obp=[]
+    above_ops=[]
+    elite=[]
+    cur.execute("SELECT baseball_players.player_name, player_stats.player_avg FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id WHERE player_avg > 0.237 AND player_avg !='.---'")
+    res = cur.fetchall()
+    print(res)
+    above_avr.append(res)
+    cur.execute("SELECT baseball_players.player_name, player_stats.player_obp FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id WHERE player_obp > 0.307 AND player_obp !='.---'")
+    res = cur.fetchall()
+    print(res)
+    above_obp.append(res)
+    cur.execute("SELECT baseball_players.player_name, player_stats.player_ops FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id WHERE player_ops > 0.691")
+    res = cur.fetchall()
+    print(res)
+    above_ops.append(res)
+    cur.execute("SELECT baseball_players.player_name, player_stats.player_avg, player_stats.player_ops, player_stats.player_obp FROM baseball_players JOIN player_stats ON baseball_players.player_id = player_stats.player_id WHERE player_avg > 0.237 AND player_obp > 0.307 AND player_ops > 0.691")
+    res = cur.fetchall()
+    print(res)
+    elite.append(res)
+
+    with open(filename, 'w') as file:
+        json.dump(above_avr, file)
+        file.write('\n\n\n')
+        json.dump(above_obp, file)
+        file.write('\n\n\n')
+        json.dump(above_ops, file)
+        file.write('\n\n\n')
+        json.dump(elite, file)
+    
+    
 
 
 def main():
     cur, conn = setUpDatabase('sport_analysis.db')
-    create_tables(cur, conn)
+    #create_tables(cur, conn)
     # add_player(cur,conn)
-    add_stats(cur,conn)
+    #add_stats(cur,conn)
+    calculate_stats_baseball("baseball_data.json", cur,conn)
 
 if __name__ == "__main__":
     main()
