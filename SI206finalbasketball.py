@@ -8,23 +8,6 @@ import matplotlib.pyplot as plt
 
 
 def get_basketball_info(url, params=None):
-    '''
-    Check whether the 'params' dictionary has been specified. 
-    Makes a request to access data with the 'url' and 'params' given, if any. 
-    If the request is successful, return a dictionary representation 
-    of the decoded JSON. If the search is unsuccessful, print out "Exception!"
-    and return None.
-
-    Parameters
-    ----------
-    url (str): a url that provides information about entities in the Star Wars universe.
-    params (dict): optional dictionary of querystring arguments (default value is 'None').
-        
-
-    Returns
-    -------
-    dict: dictionary representation of the decoded JSON.
-    '''
     if params:
         try:
             response = requests.get(url, params)
@@ -50,9 +33,9 @@ def setUpDatabase(db_name):
 
 
 def create_table_players(cur, conn):
-    cur.execute('CREATE TABLE IF NOT EXISTS b_players (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, position TEXT, height_feet INTEGER, height_inches INTEGER, weight_pounds INTEGER)')
+    cur.execute('CREATE TABLE IF NOT EXISTS basketball_players (id INTEGER PRIMARY KEY, first_name TEXT, last_name TEXT, position TEXT, height_feet INTEGER, height_inches INTEGER, weight_pounds INTEGER)')
     conn.commit()
-    cur.execute('CREATE TABLE IF NOT EXISTS b_stats (player_id INTEGER PRIMARY KEY, games_played INTEGER, reb NUMERIC, ast NUMERIC, pts NUMERIC)')
+    cur.execute('CREATE TABLE IF NOT EXISTS basketball_stats (player_id INTEGER PRIMARY KEY, games_played INTEGER, reb NUMERIC, ast NUMERIC, pts NUMERIC)')
     conn.commit()
 
 
@@ -61,8 +44,6 @@ def add_player(cur, conn):
     while index<= 209:
         url = f'https://www.balldontlie.io/api/v1/players?page={index}'
         data = get_basketball_info(url)
-        # print(data)
-        # print(data['data'])
         for player in data['data']:
             id = player['id']
             first_name = player['first_name']
@@ -71,12 +52,11 @@ def add_player(cur, conn):
             height_feet = player.get('height_feet', None)
             height_inches = player.get('height_inches', None)
             weight_pounds = player.get('weight_pounds', None)
-            # cur.execute('INSERT OR IGNORE INTO b_players (id, first_name, last_name, position, height_feet, height_inches, weight_pounds) VALUES(?, ?, ?, ?, ?, ?, ?)', (id, first_name, last_name, position, height_feet, height_inches, weight_pounds))
-            cur.execute("INSERT OR IGNORE INTO b_players (id, first_name, last_name, position, height_feet,height_inches, weight_pounds) VALUES (?,?,?,?,?,?,?)", (id, first_name, last_name, position, height_feet, height_inches, weight_pounds))
+            cur.execute("INSERT OR IGNORE INTO basketball_players (id, first_name, last_name, position, height_feet,height_inches, weight_pounds) VALUES (?,?,?,?,?,?,?)", (id, first_name, last_name, position, height_feet, height_inches, weight_pounds))
         index+=1
-        conn.commit()
         if index == 60 or index == 120 or index == 180:
             time.sleep(65)
+        conn.commit()
 
 def add_stats(cur, conn):
     index = 0
@@ -94,14 +74,15 @@ def add_stats(cur, conn):
             reb = player['reb']
             ast = player['ast']
             pts = player['pts']                
-            cur.execute("INSERT OR IGNORE INTO b_stats (player_id, games_played, reb, ast, pts) VALUES (?,?,?,?,?)", (player_id, games_played, reb, ast, pts))
+            cur.execute("INSERT OR IGNORE INTO basketball_stats (player_id, games_played, reb, ast, pts) VALUES (?,?,?,?,?)", (player_id, games_played, reb, ast, pts))
         index += 20
         conn.commit()
         if index%60==0:
             time.sleep(65)
         
 def calculate_stats_baseball(filename, cur, conn):
-    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts, b_stats.ast, b_stats.reb FROM b_players JOIN b_stats ON b_players. id = b_stats.player_id")
+    #get the stats for a player by joining the two tables
+    cur.execute("SELECT basketball_players.first_name, basketball_players.last_name, basketball_stats.pts, basketball_stats.ast, basketball_stats.reb FROM basketball_players JOIN basketball_stats ON basketball_players. id = basketball_stats.player_id")
     res = cur.fetchall()
     print(res)
     pts_lst=[]
@@ -118,45 +99,46 @@ def calculate_stats_baseball(filename, cur, conn):
         ast_lst.append(ast)
         reb_lst.append(reb)
         all_players_lst.append(name)
+    #get the league average for each stat
     league_pts_average= sum(pts_lst)/len(pts_lst)
     league_ast_average= sum(ast_lst)/len(ast_lst)
     league_reb_average= sum(reb_lst)/len(reb_lst)
     print(league_pts_average)
     print(league_ast_average)
     print(league_reb_average)
+    #new lists for the players that cross the tresholds
     above_pts=[]
     above_ast=[]
     above_reb=[]
     elite=[]
-    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE pts > 11.13")
+    #each statement gets the name and stat of the threshold they crossed
+    cur.execute("SELECT basketball_players.first_name, basketball_players.last_name, basketball_stats.pts FROM basketball_players JOIN basketball_stats ON basketball_players.id = basketball_stats.player_id WHERE pts > 11.13")
     res = cur.fetchall()
     print(res)
     above_pts.append(res)
-    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.ast FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE ast > 2.57")
+    cur.execute("SELECT basketball_players.first_name, basketball_players.last_name, basketball_stats.ast FROM basketball_players JOIN basketball_stats ON basketball_players.id = basketball_stats.player_id WHERE ast > 2.57")
     res = cur.fetchall()
     print(res)
     above_ast.append(res)
-    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.reb FROM b_players JOIN b_stats ON b_players.id = b_stats.player_id WHERE reb > 4.20")
+    cur.execute("SELECT basketball_players.first_name, basketball_players.last_name, basketball_stats.reb FROM basketball_players JOIN basketball_stats ON basketball_players.id = basketball_stats.player_id WHERE reb > 4.20")
     res = cur.fetchall()
     print(res)
     above_reb.append(res)
-    cur.execute("SELECT b_players.first_name, b_players.last_name, b_stats.pts, b_stats.ast, b_stats.reb FROM b_players JOIN b_stats ON  b_players.id = b_stats.player_id WHERE pts > 11.13 AND ast > 2.75 AND reb > 4.20")
+    #check for player and their stat if they crossed all three thresholds
+    cur.execute("SELECT basketball_players.first_name, basketball_players.last_name, basketball_stats.pts, basketball_stats.ast, basketball_stats.reb FROM basketball_players JOIN basketball_stats ON  basketball_players.id = basketball_stats.player_id WHERE pts > 11.13 AND ast > 2.75 AND reb > 4.20")
     res = cur.fetchall()
     print(res)
     elite.append(res)
 
     count_above_average= len(above_pts[0])+len(above_ast[0])+len(above_reb[0])
     count_elite_player= len(elite[0])
-    # print(count_above_average)
-    # print(count_elite_player)
-
 
     pts_percentage= (len(above_pts[0])/(len(all_players_lst)))*100
     ast_percentage= (len(above_ast[0])/(len(all_players_lst)))*100
     reb_percentage= (len(above_reb[0])/(len(all_players_lst)))*100
     elite_percentage= (len(elite[0])/(len(all_players_lst)))*100
 
-    
+    #write the information to the file
     with open(filename, 'w') as file:
         file.write("Total amount of players in Database " + str(len(all_players_lst)))
         file.write('\n\n\n')
@@ -175,7 +157,8 @@ def calculate_stats_baseball(filename, cur, conn):
         json.dump(elite, file)
         file.write("\nTotal amount of Elite players- above the league mean for for every category (pts, ast, reb): " + str(len(elite[0])))
         file.write("\nPercentage of Elite players: " + str(elite_percentage)+'%')
-       
+    
+    #create charts of the data
     categories = ['elite', 'league average']
     values = [count_elite_player, count_above_average]
     colors = ['blue', 'green']
@@ -186,21 +169,21 @@ def calculate_stats_baseball(filename, cur, conn):
     plt.title('Elite vs Above Average Player Counts - Basketball')
     plt.show()
     
-    labels = ['Total Player', 'pts']
+    labels = ['Total Player', 'Players Above Average - pts']
     sizes = [len(all_players_lst)-len(above_pts[0]), len(above_pts[0])]
     colors = ['lightcoral', 'lightgreen']
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
     plt.title("Percentage of Players Above The League Mean For Points Per Game vs Below")
     plt.show()
 
-    labels = ['Total Player', 'reb']
+    labels = ['Total Player', 'Players Above Average - reb']
     sizes = [len(all_players_lst)-len(above_reb[0]), len(above_reb[0])]
     colors = ['lightcoral', 'orange']
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
     plt.title("Percentage of Players Above The League Mean for Rebounds Per Game Game vs Below")
     plt.show()
 
-    labels = ['Total Player', 'ast']
+    labels = ['Total Player', 'Players Above Average - ast']
     sizes = [len(all_players_lst)-len(above_ast[0]), len(above_ast[0])]
     colors = ['lightcoral', 'purple']
     plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, shadow=True)
@@ -216,9 +199,9 @@ def calculate_stats_baseball(filename, cur, conn):
 
 def main():
     cur, conn = setUpDatabase('sport_analysis.db')  
-    # create_table_players(cur, conn)
-    # add_player(cur,conn)
-    # add_stats(cur,conn)
+    create_table_players(cur, conn)
+    add_player(cur,conn)
+    add_stats(cur,conn)
     calculate_stats_baseball("basketball_data.json", cur, conn)
 
 if __name__ == "__main__":
